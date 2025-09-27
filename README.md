@@ -1,1 +1,0 @@
-# Salah-time-today
