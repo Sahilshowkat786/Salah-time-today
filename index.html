@@ -1,178 +1,548 @@
-<!doctype html>
+
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Srinagar Azan & Jamat Board (Hanafi)</title>
-<style>
-  :root{--bg:#071214;--accent:#00c853;--muted:#9aa7a6;font-family:"Segoe UI",Arial,sans-serif}
-  body{margin:0;background:#021014;color:#e8f6ef}
-  .container{max-width:900px;margin:20px auto;padding:20px;background:rgba(0,0,0,0.25);border-radius:10px}
-  .top{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap}
-  .clock{font-size:52px;font-weight:bold;color:#ff3b3b}
-  .prayertable{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px}
-  table{width:100%;border-collapse:collapse}
-  td,th{padding:8px;text-align:left}
-  th{color:var(--muted)}
-  .azan{color:#f6f1ff;font-size:18px}
-  .jamat{color:#ffd166;font-size:18px}
-  .next{background:rgba(0,200,83,0.1);border-left:4px solid var(--accent)}
-  .countdown{margin-top:10px;font-size:18px}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#071b17">
+  <meta name="description" content="Prayer times, Jamat timetable and next Salah countdown.">
+  <title>Salah Time Today</title>
+
+  <style>
+    :root {
+      --bg: #071510;
+      --card: #10251c;
+      --border: #294738;
+      --green: #55e6a0;
+      --text: #f4fff8;
+      --muted: #a9c1b2;
+      --gold: #ffdb83;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 20px;
+      color: var(--text);
+      background: radial-gradient(ellipse at top, #19452f, var(--bg) 65%);
+      font-family: Arial, sans-serif;
+      min-height: 100vh;
+    }
+
+    .container {
+      width: min(100%, 950px);
+      margin: auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+
+    h1 { margin: 0; font-size: clamp(25px, 5vw, 36px); }
+    h2 { font-size: 19px; margin-top: 0; }
+    .muted { color: var(--muted); }
+    .accent { color: var(--green); }
+
+    select, button {
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 11px;
+      font-size: 15px;
+    }
+
+    button { cursor: pointer; }
+    button:hover { border-color: var(--green); }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      background: rgba(16, 37, 28, .96);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 22px;
+      margin-bottom: 16px;
+      min-width: 0;
+    }
+
+    .clock {
+      font-size: clamp(35px, 8vw, 55px);
+      font-weight: bold;
+      margin: 12px 0;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .next-name {
+      color: var(--green);
+      font-size: 30px;
+      font-weight: bold;
+      margin: 12px 0;
+    }
+
+    .countdown {
+      font-size: clamp(27px, 6vw, 38px);
+      font-weight: bold;
+      margin-top: 16px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .table-wrap { overflow-x: auto; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      padding: 14px 8px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    th { color: var(--muted); }
+
+    td:last-child, th:last-child {
+      text-align: right;
+    }
+
+    .jamat-time { color: var(--gold); }
+
+    tr.is-next {
+      background: #1b4833;
+      font-weight: bold;
+    }
+
+    .status {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+      margin: 12px 0;
+    }
+
+    .error { color: #ff9999; }
+
+    .notice {
+      background: #302817;
+      border: 1px solid #65512a;
+      color: #ffe5a6;
+      border-radius: 12px;
+      padding: 14px;
+      line-height: 1.5;
+      font-size: 14px;
+    }
+
+    footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 25px;
+    }
+
+    @media (max-width: 650px) {
+      body { padding: 12px; }
+      .grid { grid-template-columns: 1fr; }
+      .card { padding: 17px; }
+      header { align-items: flex-start; }
+    }
+  </style>
 </head>
+
 <body>
-<div class="container">
-  <div class="top">
-    <div>
-      <div class="clock" id="currentClock">--:--:--</div>
-      <div id="currentDate"></div>
+  <main class="container">
+
+    <header>
+      <div>
+        <h1>☾ Salah Time Today</h1>
+        <p class="muted">Prayer times & congregation timetable</p>
+      </div>
+
+      <div>
+        <label for="city">City: </label>
+        <select id="city">
+          <option value="Srinagar">Srinagar</option>
+          <option value="Pulwama">Pulwama</option>
+          <option value="Anantnag">Anantnag</option>
+          <option value="Baramulla">Baramulla</option>
+          <option value="Jammu">Jammu</option>
+          <option value="Delhi">Delhi</option>
+        </select>
+        <button id="refresh">Refresh</button>
+      </div>
+    </header>
+
+    <section class="grid">
+      <div class="card">
+        <p class="muted">CURRENT TIME</p>
+        <div class="clock" id="clock">--:--:--</div>
+        <div id="date" class="muted"></div>
+      </div>
+
+      <div class="card">
+        <p class="muted">NEXT PRAYER</p>
+        <div class="next-name" id="nextPrayer">Loading...</div>
+        <div id="nextTime" class="muted"></div>
+        <div class="countdown" id="countdown">--:--:--</div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="card">
+        <h2>🕌 Azan / Prayer Times</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Prayer</th><th>Time</th></tr>
+            </thead>
+            <tbody id="azanTable">
+              <tr><td colspan="2">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>📿 Jamat Times</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Prayer</th><th>Time</th></tr>
+            </thead>
+            <tbody id="jamatTable">
+              <tr><td colspan="2">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <p id="status" class="status" role="status">
+      Connecting to prayer-times API...
+    </p>
+
+    <div class="notice">
+      <strong>Important:</strong> Jamat times are estimates based on
+      editable offsets in this code. Confirm your mosque's actual
+      timetable before relying on them. Calculation methods can also
+      affect the displayed prayer times.
     </div>
-    <div id="nextLabel" class="countdown">Next: —</div>
-  </div>
 
-  <div class="prayertable">
-    <div>
-      <h3>Azan Times</h3>
-      <table id="azanTable"><tbody></tbody></table>
-    </div>
-    <div>
-      <h3>Jamat Times</h3>
-      <table id="jamatTable"><tbody></tbody></table>
-    </div>
-  </div>
-</div>
+    <footer>© 2026 Salah Time Today</footer>
+  </main>
 
-<script>
-// ---------- Config ----------
-const prayersOrder = ['Fajr','Sunrise','Dhuhr','Asr','Maghrib','Isha','Sunset'];
+  <script>
+    "use strict";
 
-// Fallback sample for Srinagar
-const sampleTimes = { 
-  Fajr:"04:53", Sunrise:"06:17", Dhuhr:"13:00", Asr:"16:47", Maghrib:"18:32", Isha:"19:56", Sunset:"18:32"
-};
+    const API =
+      "https://api.aladhan.com/v1/timingsByCity";
 
-// ---------- Helpers ----------
-function pad(n){return n.toString().padStart(2,'0');}
-function format12h(date){
-  let h=date.getHours(), m=pad(date.getMinutes());
-  let ampm = h>=12?"PM":"AM";
-  h=h%12; if(h===0) h=12;
-  return `${h}:${m} ${ampm}`;
-}
-function toDate(timeStr){
-  const [h,m]=timeStr.split(":").map(Number);
-  const now=new Date();
-  return new Date(now.getFullYear(),now.getMonth(),now.getDate(),h,m,0,0);
-}
+    // AlAdhan calculation method 1: Karachi
+    const METHOD = 1;
 
-// ---------- Adjusted Azan Times ----------
-function adjustAzan(azan){
-  const adjusted={...azan};
-  adjusted.Asr = new Date(toDate(azan.Asr).getTime()+51*60000);   // +51 mins
-  adjusted.Maghrib = new Date(toDate(azan.Maghrib).getTime()+3*60000); // +3 mins
-  adjusted.Fajr = toDate(azan.Fajr);
-  adjusted.Sunrise = toDate(azan.Sunrise);
-  adjusted.Dhuhr = new Date(new Date().setHours(13,0,0,0)); // fixed 1:00 PM
-  adjusted.Isha = toDate(azan.Isha);
-  adjusted.Sunset = toDate(azan.Sunset);
-  return adjusted;
-}
+    // 1 = Hanafi school for Asr calculation.
+    const SCHOOL = 1;
 
-// ---------- Jamat rules ----------
-function applyJamatRules(adjustedAzan){
-  return {
-    Fajr:new Date(adjustedAzan.Fajr.getTime()+40*60000),
-    Dhuhr:new Date(new Date().setHours(13,15,0,0)), // fixed 1:15 PM
-    Asr:new Date(adjustedAzan.Asr.getTime()+10*60000), 
-    Maghrib:new Date(adjustedAzan.Maghrib.getTime()+6*60000), 
-    Isha:new Date(adjustedAzan.Isha.getTime()+10*60000)
-  };
-}
+    const PRAYERS = [
+      "Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"
+    ];
 
-// ---------- UI ----------
-const azanTbody=document.querySelector('#azanTable tbody');
-const jamatTbody=document.querySelector('#jamatTable tbody');
-const clockNode=document.getElementById('currentClock');
-const dateNode=document.getElementById('currentDate');
-const nextLabel=document.getElementById('nextLabel');
+    const DISPLAY_ORDER = [
+      "Fajr", "Sunrise", "Dhuhr", "Asr", "Maghrib", "Isha"
+    ];
 
-let todaysAzan={}, todaysJamat={}, currentDay=null;
+    // Customize these according to your local mosque.
+    // Values are minutes added to API prayer times.
+    const JAMAT_OFFSETS = {
+      Fajr: 40,
+      Dhuhr: 15,
+      Asr: 10,
+      Maghrib: 6,
+      Isha: 10
+    };
 
-// Render tables
-function renderTables(azan,jamat){
-  azanTbody.innerHTML=''; jamatTbody.innerHTML='';
-  todaysAzan={}; todaysJamat=jamat;
+    const $ = id => document.getElementById(id);
 
-  for(const p of prayersOrder){
-    if(!azan[p]) continue; 
-    const az=(azan[p] instanceof Date)?azan[p]:toDate(azan[p]); 
-    todaysAzan[p]=az;
+    let prayerTimes = {};
+    let jamatTimes = {};
+    let loadedDate = "";
+    let requestNumber = 0;
 
-    azanTbody.innerHTML+=`<tr data-p="${p}"><td>${p}</td><td class="azan">${format12h(az)}</td></tr>`;
-  }
+    function todayKey() {
+      const d = new Date();
+      return [
+        d.getFullYear(),
+        String(d.getMonth() + 1).padStart(2, "0"),
+        String(d.getDate()).padStart(2, "0")
+      ].join("-");
+    }
 
-  // only show 5 prayers in Jamat table
-  ['Fajr','Dhuhr','Asr','Maghrib','Isha'].forEach(p=>{
-    const jm=jamat[p];
-    jamatTbody.innerHTML+=`<tr data-p="${p}"><td>${p}</td><td class="jamat">${format12h(jm)}</td></tr>`;
-  });
-}
+    function parseTime(value) {
+      const match = String(value || "").match(
+        /(\d{1,2}):(\d{2})/
+      );
 
-// Update clock + next prayer + midnight refresh
-function updateClock(){
-  const now=new Date();
-  clockNode.textContent=format12h(now)+":"+pad(now.getSeconds());
-  dateNode.textContent=now.toDateString();
+      if (!match) return null;
 
-  // detect day change → reload prayer times
-  const todayDay=now.getDate();
-  if(currentDay!==todayDay){
-    currentDay=todayDay;
-    loadTimes(); // re-fetch new day timings
-    return; // skip countdown this tick to avoid flicker
-  }
+      const h = Number(match[1]);
+      const m = Number(match[2]);
 
-  let nextP=null, nextT=null;
-  for(const p of ['Fajr','Dhuhr','Asr','Maghrib','Isha']){
-    if(todaysAzan[p] && todaysAzan[p]>now){nextP=p;nextT=todaysAzan[p];break;}
-  }
-  if(!nextP){nextP="Fajr";nextT=new Date(todaysAzan.Fajr.getTime()+24*60*60000);}
-  document.querySelectorAll("tr").forEach(r=>r.classList.remove("next"));
-  document.querySelector(`#azanTable tr[data-p="${nextP}"]`)?.classList.add("next");
-  document.querySelector(`#jamatTable tr[data-p="${nextP}"]`)?.classList.add("next");
+      if (h > 23 || m > 59) return null;
 
-  const diff=Math.max(0,nextT-now); 
-  const h=Math.floor(diff/3600000), m=Math.floor((diff%3600000)/60000), s=Math.floor((diff%60000)/1000);
-  nextLabel.innerHTML=`Next: <b>${nextP}</b> at ${format12h(nextT)} — in ${pad(h)}:${pad(m)}:${pad(s)}`;
-}
+      const d = new Date();
+      d.setHours(h, m, 0, 0);
+      return d;
+    }
 
-// ---------- Load ----------
-async function loadTimes(){
-  try{
-    const r=await fetch("https://api.aladhan.com/v1/timingsByCity?city=Srinagar&country=India&madhab=1");
-    const d=await r.json(); let t=d.data.timings;
-    const clean={};
-    ['Fajr','Sunrise','Dhuhr','Asr','Maghrib','Isha','Sunset'].forEach(p=>{
-      let val=t[p]?.match(/(\d{1,2}:\d{2})/);
-      if(val) clean[p]=val[1];
-    });
-    clean.Dhuhr="13:00"; // force Zuhr Azan at 1:00
-    const adjusted=adjustAzan(clean);
-    renderTables(adjusted,applyJamatRules(adjusted));
-  }catch(e){
-    console.warn("API failed, fallback used");
-    const adjusted=adjustAzan(sampleTimes);
-    renderTables(adjusted,applyJamatRules(adjusted));
-  }
-}
+    function addMinutes(date, minutes) {
+      return new Date(date.getTime() + minutes * 60000);
+    }
 
-// ---------- Init ----------
-function init(){
-  currentDay=new Date().getDate();
-  loadTimes();
-  setInterval(updateClock,1000);
-}
-init();
-</script>
+    function formatTime(date) {
+      return new Intl.DateTimeFormat("en-IN", {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true
+      }).format(date);
+    }
+
+    function showStatus(message, error = false) {
+      $("status").textContent = message;
+      $("status").classList.toggle("error", error);
+    }
+
+    function renderTable(id, entries, isJamat, nextPrayer) {
+      const tbody = $(id);
+      tbody.replaceChildren();
+
+      for (const [name, time] of entries) {
+        const row = document.createElement("tr");
+
+        if (name === nextPrayer) {
+          row.classList.add("is-next");
+        }
+
+        const nameCell = document.createElement("td");
+        nameCell.textContent = name;
+
+        const timeCell = document.createElement("td");
+        timeCell.textContent = formatTime(time);
+
+        if (isJamat) {
+          timeCell.className = "jamat-time";
+        }
+
+        row.append(nameCell, timeCell);
+        tbody.appendChild(row);
+      }
+    }
+
+    function renderTables(nextPrayer = "") {
+      renderTable(
+        "azanTable",
+        DISPLAY_ORDER
+          .filter(name => prayerTimes[name])
+          .map(name => [name, prayerTimes[name]]),
+        false,
+        nextPrayer
+      );
+
+      renderTable(
+        "jamatTable",
+        PRAYERS
+          .filter(name => jamatTimes[name])
+          .map(name => [name, jamatTimes[name]]),
+        true,
+        nextPrayer
+      );
+    }
+
+    function getNextPrayer(now) {
+      for (const name of PRAYERS) {
+        if (prayerTimes[name] && prayerTimes[name] > now) {
+          return { name, time: prayerTimes[name] };
+        }
+      }
+
+      // All today's prayers have passed: Fajr is next.
+      if (prayerTimes.Fajr) {
+        const tomorrowFajr = new Date(prayerTimes.Fajr);
+        tomorrowFajr.setDate(tomorrowFajr.getDate() + 1);
+
+        return { name: "Fajr", time: tomorrowFajr };
+      }
+
+      return null;
+    }
+
+    function updateClock() {
+      const now = new Date();
+
+      $("clock").textContent = new Intl.DateTimeFormat("en-IN", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true
+      }).format(now);
+
+      $("date").textContent =
+        new Intl.DateTimeFormat("en-IN", {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          year: "numeric"
+        }).format(now);
+
+      if (loadedDate && loadedDate !== todayKey()) {
+        loadPrayerTimes();
+        return;
+      }
+
+      const next = getNextPrayer(now);
+
+      if (!next) {
+        $("nextPrayer").textContent = "Unavailable";
+        $("nextTime").textContent = "Prayer times have not loaded";
+        $("countdown").textContent = "--:--:--";
+        return;
+      }
+
+      const difference = Math.max(
+        0, next.time.getTime() - now.getTime()
+      );
+
+      const hours = Math.floor(difference / 3600000);
+      const minutes = Math.floor((difference % 3600000) / 60000);
+      const seconds = Math.floor((difference % 60000) / 1000);
+
+      $("nextPrayer").textContent = next.name;
+      $("nextTime").textContent =
+        "Prayer time: " + formatTime(next.time) +
+        (next.time.getDate() !== now.getDate() ? " tomorrow" : "");
+
+      $("countdown").textContent =
+        [hours, minutes, seconds]
+          .map(value => String(value).padStart(2, "0"))
+          .join(":");
+
+      renderTables(next.name);
+    }
+
+    async function loadPrayerTimes() {
+      const currentRequest = ++requestNumber;
+      const city = $("city").value;
+      const button = $("refresh");
+
+      button.disabled = true;
+      button.textContent = "Loading...";
+      showStatus("Fetching prayer times for " + city + "...");
+
+      try {
+        const url = new URL(API);
+
+        url.search = new URLSearchParams({
+          city: city,
+          country: "India",
+          method: String(METHOD),
+          school: String(SCHOOL)
+        });
+
+        const response = await fetch(url);
+
+        if (!response.ok) {
+          throw new Error("HTTP " + response.status);
+        }
+
+        const result = await response.json();
+
+        if (result.code !== 200 || !result.data?.timings) {
+          throw new Error("Invalid API response");
+        }
+
+        if (currentRequest !== requestNumber) return;
+
+        const timings = result.data.timings;
+        const newTimes = {};
+
+        for (const name of DISPLAY_ORDER) {
+          const time = parseTime(timings[name]);
+
+          if (time) newTimes[name] = time;
+        }
+
+        for (const name of PRAYERS) {
+          if (!newTimes[name]) {
+            throw new Error("Missing time for " + name);
+          }
+        }
+
+        prayerTimes = newTimes;
+        jamatTimes = {};
+
+        for (const name of PRAYERS) {
+          jamatTimes[name] = addMinutes(
+            prayerTimes[name],
+            JAMAT_OFFSETS[name] || 0
+          );
+        }
+
+        loadedDate = todayKey();
+
+        renderTables();
+        updateClock();
+
+        showStatus(
+          "Timings loaded for " + city +
+          ". Method: Karachi. Asr school: Hanafi."
+        );
+
+      } catch (error) {
+        if (currentRequest !== requestNumber) return;
+
+        console.error(error);
+
+        prayerTimes = {};
+        jamatTimes = {};
+        loadedDate = "";
+
+        $("azanTable").innerHTML =
+          '<tr><td colspan="2">Unable to load prayer times.</td></tr>';
+
+        $("jamatTable").innerHTML =
+          '<tr><td colspan="2">Jamat times unavailable.</td></tr>';
+
+        $("nextPrayer").textContent = "Unavailable";
+        $("nextTime").textContent = "Check your connection and retry.";
+        $("countdown").textContent = "--:--:--";
+
+        showStatus(
+          "Could not load current timings. Please refresh or check your internet connection.",
+          true
+        );
+
+      } finally {
+        if (currentRequest === requestNumber) {
+          button.disabled = false;
+          button.textContent = "Refresh";
+        }
+      }
+    }
+
+    $("city").addEventListener("change", loadPrayerTimes);
+    $("refresh").addEventListener("click", loadPrayerTimes);
+
+    setInterval(updateClock, 1000);
+    loadPrayerTimes();
+  </script>
 </body>
 </html>
